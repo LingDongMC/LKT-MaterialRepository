@@ -1,0 +1,36 @@
+# .github/workflows/auto-sync.yml 
+on:
+  # push
+  schedule:
+  # - cron: "*/5 * * * *"
+  - cron: "0 */12 * * *"
+jobs:
+  git-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: backup action
+        run: |
+          mkdir -p backup
+          git clone https://lockoct:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/LingDongMC/LKT-MaterialRepository.git ./work --origin destination
+          cp ./work/.github/workflows/auto-sync.yml ./backup
+          cp ./work/.github/workflows/auto-sync-wiki.yml ./backup
+      - name: get source
+        run: |
+          cd ./work
+          git remote add source https://github.com/lockoct/LKT-MaterialRepository.git
+          git fetch source "+refs/heads/*:refs/heads/*" --update-head-ok --tags
+      - name: push
+        run: |
+          cd ./work
+          git config user.name "lockoct"
+          git config user.email "825300455@qq.com"
+          mkdir -p .github/workflows
+          cp ../backup/auto-sync.yml ./.github/workflows/auto-sync.yml
+          cp ../backup/auto-sync-wiki.yml ./.github/workflows/auto-sync-wiki.yml
+          git add .
+          git commit -m "sync"
+          git credential-cache exit
+          # 推送所有分支
+          git push destination refs/heads/*:refs/heads/* -f
+          # 推送所有tag
+          git push destination refs/tags/*:refs/tags/* -f

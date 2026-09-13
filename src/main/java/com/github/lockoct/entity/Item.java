@@ -25,22 +25,6 @@ public class Item {
     private int amount;
 
     @Column
-    @Comment("是否可堆叠(0: 不可堆叠, 1: 可堆叠)")
-    @Default("1")
-    @ColDefine(type = ColType.BOOLEAN, notNull = true)
-    private boolean stack;
-
-    @Column
-    @Comment("nbt标签")
-    @ColDefine(type = ColType.TEXT)
-    private String nbt;
-
-    @Column
-    @Comment("nbtMd5校验值")
-    @ColDefine(type = ColType.VARCHAR, width = 45)
-    private String nbtMd5;
-
-    @Column
     @Comment("创建时间")
     @PrevInsert(now = true)
     @ColDefine(type = ColType.DATETIME)
@@ -75,30 +59,6 @@ public class Item {
 
     public void setAmount(int amount) {
         this.amount = amount;
-    }
-
-    public boolean isStack() {
-        return stack;
-    }
-
-    public void setStack(boolean stack) {
-        this.stack = stack;
-    }
-
-    public String getNbt() {
-        return nbt;
-    }
-
-    public void setNbt(String nbt) {
-        this.nbt = nbt;
-    }
-
-    public String getNbtMd5() {
-        return nbtMd5;
-    }
-
-    public void setNbtMd5(String nbtMd5) {
-        this.nbtMd5 = nbtMd5;
     }
 
     public Date getCreateTime() {
