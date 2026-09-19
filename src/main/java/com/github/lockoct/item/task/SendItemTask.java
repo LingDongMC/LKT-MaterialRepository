@@ -1,12 +1,7 @@
 package com.github.lockoct.item.task;
 
-import com.github.lockoct.Main;
 import com.github.lockoct.entity.Item;
-import com.github.lockoct.nbtapi.NBT;
-import com.github.lockoct.nbtapi.iface.ReadWriteNBT;
 import com.github.lockoct.utils.DatabaseUtil;
-import com.github.lockoct.utils.I18nUtil;
-import org.apache.commons.lang3.StringUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -16,7 +11,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.nutz.dao.Chain;
 import org.nutz.dao.Cnd;
 import org.nutz.dao.Dao;
-import org.nutz.dao.util.cri.Static;
 
 import java.util.ArrayList;
 
@@ -39,17 +33,18 @@ public class SendItemTask extends BukkitRunnable {
         if (dao == null) {
             return;
         }
+        Player player = this.player;
         boolean moreThanRepoAmount;
         // 需要获取当前类型最大堆叠数，不能直接用64
-        Material material = Material.getMaterial(itemInfo.getType());
+        Material material = Material.getMaterial(this.itemInfo.getType());
         assert material != null;
         int maxStackSize = material.getMaxStackSize();
         // 倍率
-        int times = mode == 1 ? 1 : maxStackSize;
-        int amount = calcRes * times;
-        Item item = dao.query(Item.class, Cnd.where("id", "=", itemInfo.getId())).get(0);
+        int times = this.mode == 1 ? 1 : maxStackSize;
+        int amount = this.calcRes * times;
+        Item item = dao.query(Item.class, Cnd.where("id", "=", this.itemInfo.getId())).get(0);
         if (item.getAmount() <= 0) {
-            player.sendMessage(ChatColor.RED + I18nUtil.getText(Main.plugin, player, "cmd.itemCmd.noAmount"));
+            player.sendMessage(ChatColor.RED + "该物品暂无库存");
             return;
         }
 
@@ -78,47 +73,33 @@ public class SendItemTask extends BukkitRunnable {
         }
 
         if (needSlot > emptySlotPos.size()) {
-            player.sendMessage(ChatColor.RED + I18nUtil.getText(Main.plugin, player, "cmd.itemCmd.freeSlotLack"));
+            player.sendMessage(ChatColor.RED + "背包空余格子数量不足，请先清理背包后再领取物料");
             return;
         }
 
         // 在update语句中直接对库存做自减
         // 条件为当前库存数量必须大于拿取数量，用于避免并发操作时库存出现负数
-        int res = dao.update(
-            Item.class,
-            Chain.makeSpecial("amount", "-" + amount),
-            Cnd.where("id", "=", item.getId())
-                .and(new Static("amount - (select count(*) from mr_unstack_item where item_id = '" + item.getId() + "') >= " + amount))
-        );
+        int res = dao.update(Item.class, Chain.makeSpecial("amount", "-" + amount), Cnd.where("amount", ">=", amount).and("id", "=", item.getId()));
         if (res > 0) {
             // 给玩家背包发放物品
-            ItemStack sendItem;
-            // 对有nbt标签的物品进行处理
-            if (StringUtils.isNotBlank(item.getNbtMd5())) {
-                ReadWriteNBT nbt = NBT.parseNBT(item.getNbt());
-                sendItem = NBT.itemStackFromNBT(nbt);
-            } else {
+            for (int i = 0; i < needSlot; i++) {
                 Material m = Material.getMaterial(item.getType());
                 assert m != null;
-                sendItem = new ItemStack(m);
-            }
-
-            // 开始发放
-            assert sendItem != null;
-            for (int i = 0; i < needSlot; i++) {
+                ItemStack sendItem = new ItemStack(m);
                 if (i + 1 <= groupCount) {
-                    sendItem.setAmount(sendItem.getMaxStackSize());
+                    sendItem.setAmount(m.getMaxStackSize());
                 } else {
                     sendItem.setAmount(remain);
                 }
+
                 playerInv.setItem(emptySlotPos.get(i), sendItem);
             }
             if (moreThanRepoAmount) {
-                player.sendMessage(ChatColor.YELLOW + I18nUtil.getText(Main.plugin, player, "cmd.itemCmd.amountChanged"));
+                player.sendMessage(ChatColor.YELLOW + "物料库存出现变化，实际领取数量将少于请求数量");
             }
-            player.sendMessage(ChatColor.GREEN + I18nUtil.getText(Main.plugin, player, "cmd.itemCmd.getSuccessful", groupCount, remain));
+            player.sendMessage(ChatColor.GREEN + "物料领取成功，共计" + groupCount + "组" + remain + "个物品");
         } else {
-            player.sendMessage(ChatColor.RED + I18nUtil.getText(Main.plugin, player, "cmd.itemCmd.amountLack"));
+            player.sendMessage(ChatColor.RED + "该物品库存不足");
         }
     }
 }
