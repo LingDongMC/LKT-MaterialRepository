@@ -1,0 +1,18 @@
+# .github/workflows/auto-sync-wiki.yml
+
+on:
+  # push
+  schedule:
+  # - cron: "*/5 * * * *"
+  - cron: "0 */12 * * *"
+jobs:
+  git-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: git-sync
+        uses: wei/git-sync@v3
+        with:
+          source_repo: "lockoct/LKT-MaterialRepository.wiki"
+          source_branch: "master"
+          destination_repo: "https://lockoct:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/LingDongMC/LKT-MaterialRepository.wiki.git"
+          destination_branch: "master"
